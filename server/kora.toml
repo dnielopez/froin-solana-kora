@@ -1,0 +1,44 @@
+# Kora Paymaster Configuration
+# Environment: DEVNET
+
+[pricing]
+# Pricing mode: Free (100% sponsored by the fee-payer).
+# The user will not pay any fee in $FROIN; the cost in SOL is covered by the main_signer.
+# NOTE: To migrate to a Margin/Fixed pricing model later (to charge fees in $FROIN):
+# 1. Change `model = "Free"` to `model = "Fixed"` or `model = "Margin"`.
+# 2. Configure the `oracle` section (e.g., Jupiter) to fetch SOL/$FROIN prices.
+# 3. Add $FROIN to `allowed_spl_paid_tokens`.
+model = "Free"
+
+[validation]
+# The maximum allowed lamports that the paymaster will cover per transaction.
+# 10000 lamports is a safe, conservative default for Devnet testing (0.00001 SOL).
+# This is enough to cover standard transaction fees (usually 5000 lamports).
+# If a transaction requires more (e.g., allocating space), adjust this value.
+max_allowed_lamports = 10000
+
+# The maximum number of signatures the paymaster is willing to pay for.
+# Most simple transactions require 1 or 2 signatures.
+# 2 is a conservative value for testing.
+max_signatures = 2
+
+# Allowed programs that the paymaster will sponsor.
+# Minimal whitelist: System Program, SPL Token Program, Associated Token Account Program.
+allowed_programs = [
+  "11111111111111111111111111111111",             # System Program
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", # SPL Token Program
+  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" # Associated Token Account Program
+]
+
+# Allowed tokens that the paymaster will sponsor transfers/operations for.
+# Only the $FROIN mint is allowed.
+allowed_tokens = [
+  "FROIN_MINT_ADDRESS_AQUI" # TODO: Replace with the actual $FROIN mint address
+]
+
+[usage_limit]
+# Rate limiting for gasless transactions per wallet per day to prevent abuse.
+enabled = true
+# Default for devnet testing: 50 tx/day.
+# For local dev, 50 is plenty. You can adjust this later based on your beta usage (e.g., 5-10 for real users).
+max_transactions_per_wallet_per_day = 50
