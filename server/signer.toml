@@ -1,0 +1,19 @@
+# Kora Signer Configuration
+# Environment: DEVNET
+
+# NOTE PENDIENTE (PRODUCCIÓN): 
+# Actualmente se usa un "Local Private Key" (local_file) para la fase de pruebas.
+# Antes de pasar a producción/mainnet, esto DEBE migrarse a un sistema más seguro 
+# como Turnkey, Privy, o un Vault (e.g., AWS KMS, Hashicorp Vault) cambiando el `type`.
+
+[signer_pool]
+strategy = "round_robin"
+
+[[signers]]
+name = "main_signer"
+# Usamos un archivo local para el entorno de desarrollo/devnet.
+# La keypair generada solo debe usarse para pagar fees, NUNCA para tesorería o fondos de negocio.
+type = "memory"
+# La ruta se leerá de la variable de entorno KORA_PRIVATE_KEY (por seguridad)
+private_key_env = "KORA_PRIVATE_KEY"
+weight = 1

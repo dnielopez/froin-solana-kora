@@ -1,7 +1,18 @@
 # Kora Paymaster Configuration
 # Environment: DEVNET
 
-[pricing]
+[kora]
+rate_limit = 100
+
+[kora.usage_limit]
+# Rate limiting for gasless transactions per wallet per day to prevent abuse.
+enabled = true
+# Default for devnet testing: 50 tx/day.
+# For local dev, 50 is plenty. You can adjust this later based on your beta usage (e.g., 5-10 for real users).
+max_transactions = 50
+fallback_if_unavailable = true
+
+[kora.pricing]
 # Pricing mode: Free (100% sponsored by the fee-payer).
 # The user will not pay any fee in $FROIN; the cost in SOL is covered by the main_signer.
 # NOTE: To migrate to a Margin/Fixed pricing model later (to charge fees in $FROIN):
@@ -22,6 +33,8 @@ max_allowed_lamports = 10000
 # 2 is a conservative value for testing.
 max_signatures = 2
 
+price_source = "Mock"
+
 # Allowed programs that the paymaster will sponsor.
 # Minimal whitelist: System Program, SPL Token Program, Associated Token Account Program.
 allowed_programs = [
@@ -30,15 +43,13 @@ allowed_programs = [
   "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" # Associated Token Account Program
 ]
 
+# Required field by Kora even in Free mode.
+# Keep empty since we are not accepting SPL tokens as payment for fees yet.
+allowed_spl_paid_tokens = ["FRNcavmG7TsJERc2xjxfbcChLU4gwXkrpqGG6kYUc6bi"]
+
+# Required field. Accounts that are blacklisted from gasless transactions.
+disallowed_accounts = []
+
 # Allowed tokens that the paymaster will sponsor transfers/operations for.
 # Only the $FROIN mint is allowed.
-allowed_tokens = [
-  "FROIN_MINT_ADDRESS_AQUI" # TODO: Replace with the actual $FROIN mint address
-]
-
-[usage_limit]
-# Rate limiting for gasless transactions per wallet per day to prevent abuse.
-enabled = true
-# Default for devnet testing: 50 tx/day.
-# For local dev, 50 is plenty. You can adjust this later based on your beta usage (e.g., 5-10 for real users).
-max_transactions_per_wallet_per_day = 50
+allowed_tokens = ["FRNcavmG7TsJERc2xjxfbcChLU4gwXkrpqGG6kYUc6bi"] # TODO: Replace with the actual $FROIN mint address 
