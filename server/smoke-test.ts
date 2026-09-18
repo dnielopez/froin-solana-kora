@@ -47,7 +47,7 @@ async function testKora() {
     body: JSON.stringify({
       jsonrpc: "2.0",
       id: 1,
-      method: "request_gasless_tx",
+      method: "getConfig",
       params: {
         transaction: serializedTx,
       },
@@ -55,8 +55,8 @@ async function testKora() {
   });
 
   //   const textj = await response.json();
+  // console.log("Respuesta response:", String(response.statusText));
   const text = await response.text();
-  console.log("Respuesta response:", String(response.statusText));
   console.log("Respuesta cruda de Kora:", text);
   try {
     const data = JSON.parse(text);
