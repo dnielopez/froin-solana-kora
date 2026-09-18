@@ -1,19 +1,36 @@
-# Kora Signer Configuration
-# Environment: DEVNET
-
-# NOTE PENDIENTE (PRODUCCIÓN): 
-# Actualmente se usa un "Local Private Key" (local_file) para la fase de pruebas.
-# Antes de pasar a producción/mainnet, esto DEBE migrarse a un sistema más seguro 
-# como Turnkey, Privy, o un Vault (e.g., AWS KMS, Hashicorp Vault) cambiando el `type`.
+# =============================================================================
+# Kora Signer Configuration — $FROIN / RiffWin (Fravents)
+# Environment: DEVNET ONLY
+# =============================================================================
+#
+# PENDING NOTE (PRODUCTION / MAINNET MIGRATION):
+# This uses a Local Private Key signer ("memory" type) for the devnet testing
+# phase — the simplest option, private key loaded from an environment
+# variable. Before any mainnet deployment, this MUST migrate to a managed
+# signer: Turnkey, Privy, or HashiCorp Vault (Kora supports all three via the
+# `type` field on the [[signers]] entry below). That migration is explicitly
+# OUT OF SCOPE for this session.
+#
+# SECURITY: this keypair pays SOL network fees ONLY. It must never be reused
+# as, or funded from, the $FROIN treasury/business wallet. Fund it with
+# devnet SOL from the faucet only — see the setup guide for how to generate
+# and fund it.
 
 [signer_pool]
+# Single signer for now; round_robin is a no-op with one entry but keeps
+# this config forward-compatible with adding more signers later without
+# restructuring the file.
 strategy = "round_robin"
 
 [[signers]]
 name = "main_signer"
-# Usamos un archivo local para el entorno de desarrollo/devnet.
-# La keypair generada solo debe usarse para pagar fees, NUNCA para tesorería o fondos de negocio.
+# "memory" = Local Private Key signer: Kora loads the key at startup from
+# the environment variable named in private_key_env, and keeps it in memory.
 type = "memory"
-# La ruta se leerá de la variable de entorno KORA_PRIVATE_KEY (por seguridad)
+# The actual key material is NEVER written to this file. Set it in your
+# shell/CI environment before running `kora rpc`, e.g.:
+#   export KORA_PRIVATE_KEY="$(cat ~/.config/solana/kora-fee-payer.json)"
+# Accepted formats: base58 string, JSON u8 array, or a path to a Solana CLI
+# keypair JSON file (Kora reads any of the three transparently).
 private_key_env = "KORA_PRIVATE_KEY"
 weight = 1

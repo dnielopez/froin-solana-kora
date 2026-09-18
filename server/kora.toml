@@ -1,55 +1,126 @@
-# Kora Paymaster Configuration
-# Environment: DEVNET
+# =============================================================================
+# Kora Paymaster Configuration — $FROIN / RiffWin (Fravents)
+# Environment: DEVNET ONLY. Do not point this at mainnet without a full
+# security review (see signer.toml for the signer migration note).
+# =============================================================================
 
 [kora]
+# Requests/sec this Kora node will accept before rate-limiting callers.
+# 100 is a safe default for local devnet testing.
 rate_limit = 100
 
+# -----------------------------------------------------------------------------
+# Usage limits: caps gasless transactions per wallet, per time window.
+# This is your main anti-abuse lever for a fully-sponsored (Free) paymaster —
+# without it, any wallet can drain your SOL balance by spamming requests.
+# -----------------------------------------------------------------------------
 [kora.usage_limit]
-# Rate limiting for gasless transactions per wallet per day to prevent abuse.
 enabled = true
-# Default for devnet testing: 50 tx/day.
-# For local dev, 50 is plenty. You can adjust this later based on your beta usage (e.g., 5-10 for real users).
+# Default for LOCAL DEVNET TESTING ONLY: 50 gasless tx/wallet/day.
+# This is generous on purpose — you're the one testing right now, not 300 users.
+# Before opening this to your real beta:
+#   - Estimate legitimate daily usage per user from your watch-to-earn /
+#     redemption flows (e.g. a normal user might trigger 3-10 gasless
+#     actions/day), then set max_transactions to comfortably cover that
+#     (e.g. 15-20) without leaving room for abuse.
+#   - Consider a lower ceiling (5-10) if a single gasless action is high-value
+#     (e.g. a merchant redemption) rather than a frequent micro-action.
+# Tune this using real numbers from your beta, not this default.
 max_transactions = 50
+# If the usage-limit backing store (Redis) is unreachable, fail open (allow
+# the tx) rather than blocking all users. Fine for devnet; revisit for prod.
 fallback_if_unavailable = true
 
-[kora.pricing]
-# Pricing mode: Free (100% sponsored by the fee-payer).
-# The user will not pay any fee in $FROIN; the cost in SOL is covered by the main_signer.
-# NOTE: To migrate to a Margin/Fixed pricing model later (to charge fees in $FROIN):
-# 1. Change `model = "Free"` to `model = "Fixed"` or `model = "Margin"`.
-# 2. Configure the `oracle` section (e.g., Jupiter) to fetch SOL/$FROIN prices.
-# 3. Add $FROIN to `allowed_spl_paid_tokens`.
-model = "Free"
-
+# -----------------------------------------------------------------------------
+# Validation: the security policy Kora checks BEFORE co-signing any tx.
+# -----------------------------------------------------------------------------
 [validation]
-# The maximum allowed lamports that the paymaster will cover per transaction.
-# 10000 lamports is a safe, conservative default for Devnet testing (0.00001 SOL).
-# This is enough to cover standard transaction fees (usually 5000 lamports).
-# If a transaction requires more (e.g., allocating space), adjust this value.
+
+# Maximum SOL (in lamports) the fee payer will cover for a single transaction.
+# 10_000 lamports = 0.00001 SOL. A standard 1-signature transfer costs ~5,000
+# lamports, so this covers a normal transfer plus a little headroom (e.g. an
+# extra signature or a small compute-budget instruction). Raise this only if
+# you start sponsoring transactions that create accounts (rent) or need more
+# compute-unit budget — each of those costs meaningfully more than a bare
+# transfer, so size this to your actual sponsored instruction set.
 max_allowed_lamports = 10000
 
-# The maximum number of signatures the paymaster is willing to pay for.
-# Most simple transactions require 1 or 2 signatures.
-# 2 is a conservative value for testing.
+# Maximum number of signatures Kora will accept on a sponsored transaction.
+# Most simple SPL transfers need 2 (the user + Kora as fee payer). Keep this
+# tight — a high value lets an attacker construct expensive multi-signer
+# transactions that still fit under max_allowed_lamports on paper but cost
+# more to process. 2 is correct for this phase (no multisig flows yet).
 max_signatures = 2
 
+# Oracle used to price tokens for fee calculation. "Mock" returns a fixed
+# price and does no network calls — fine while pricing.type = "free" below,
+# since no price lookup actually happens. Switch to "Jupiter" only once you
+# move to Margin/Fixed pricing (see [validation.price] below).
 price_source = "Mock"
 
-# Allowed programs that the paymaster will sponsor.
-# Minimal whitelist: System Program, SPL Token Program, Associated Token Account Program.
+# Program allowlist: Kora will only sign transactions whose instructions
+# target ONE of these programs. Kept minimal on purpose for this phase —
+# your own Anchor program (vault/staking/reward logic) is explicitly OUT
+# OF SCOPE here; it gets added in Phase 2 once that program exists and has
+# been reviewed.
 allowed_programs = [
-  "11111111111111111111111111111111",             # System Program
-  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", # SPL Token Program
-  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" # Associated Token Account Program
+  "11111111111111111111111111111111",           # System Program
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",  # SPL Token Program (classic, NOT Token-2022)
+  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL", # Associated Token Account Program
 ]
 
-# Required field by Kora even in Free mode.
-# Keep empty since we are not accepting SPL tokens as payment for fees yet.
-allowed_spl_paid_tokens = ["FRNcavmG7TsJERc2xjxfbcChLU4gwXkrpqGG6kYUc6bi"]
+# Tokens Kora will sponsor transfers/operations for. Only $FROIN for now.
+# Replace the placeholder below with your devnet $FROIN mint address.
+allowed_tokens = [
+  "FROIN_MINT_ADDRESS_AQUI", # TODO: reemplazar por el mint devnet real de $FROIN
+]
 
-# Required field. Accounts that are blacklisted from gasless transactions.
+# Accounts explicitly blocked from using this paymaster (empty for now).
 disallowed_accounts = []
 
-# Allowed tokens that the paymaster will sponsor transfers/operations for.
-# Only the $FROIN mint is allowed.
-allowed_tokens = ["FRNcavmG7TsJERc2xjxfbcChLU4gwXkrpqGG6kYUc6bi"] # TODO: Replace with the actual $FROIN mint address 
+# -----------------------------------------------------------------------------
+# Pricing model. Currently: FREE — the user pays nothing, you (main_signer)
+# absorb 100% of the SOL network fee. This is the correct mode for hackathon
+# onboarding: zero friction, no oracle dependency, no token-payment logic.
+# -----------------------------------------------------------------------------
+[validation.price]
+type = "free"
+
+# --- HOW TO SWITCH TO A PAID MODE LATER (Margin or Fixed, charged in $FROIN) ---
+# You do NOT need to touch [kora], [kora.usage_limit], allowed_programs,
+# allowed_tokens, or the signer config to make this change — only this block
+# and price_source above.
+#
+# 1) Set price_source above to "Jupiter" instead of "Mock" (real-time pricing).
+# 2) Replace this block with one of:
+#
+#    # Margin pricing: charges actual SOL cost + a % markup, converted to
+#    # $FROIN at the current Jupiter price. Best for sustainable production use.
+#    # [validation.price]
+#    # type = "margin"
+#    # margin = 0.10   # 10% markup over raw cost
+#
+#    # Fixed pricing: charges a flat $FROIN amount per transaction regardless
+#    # of actual SOL cost. Simpler UX, but read the security note below.
+#    # [validation.price]
+#    # type = "fixed"
+#    # amount = 1000          # smallest units of $FROIN (adjust for decimals)
+#    # mint = "FROIN_MINT_ADDRESS_AQUI"
+#
+# 3) `allowed_spl_paid_tokens` below must include the $FROIN mint (it already
+#    does) — that's the token users will be charged in once you're not Free.
+#
+# ⚠️ SECURITY NOTE (Fixed/Free pricing only): neither mode charges for SOL
+# that flows OUT of the fee payer (e.g. a sponsored System Program transfer).
+# Because allowed_programs currently includes the System Program, make sure
+# any transaction type you sponsor here can't be abused to drain main_signer.
+# Margin pricing does not have this gap, since it always includes outflow.
+# -----------------------------------------------------------------------------
+
+# Mints accepted as PAYMENT for fees. Required field even in Free mode, but
+# functionally unused until pricing.type is "margin" or "fixed" above.
+# Pre-populated with the $FROIN mint so switching pricing modes later is a
+# one-line change (just update [validation.price], nothing else).
+allowed_spl_paid_tokens = [
+  "FROIN_MINT_ADDRESS_AQUI", # TODO: reemplazar por el mint devnet real de $FROIN
+]
